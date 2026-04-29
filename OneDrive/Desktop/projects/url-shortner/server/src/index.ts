@@ -1,7 +1,11 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
+import helmet from "helmet";
+import morgan from "morgan";
 
 //Routes
 import authRoutes from "./routes/auth";
@@ -12,18 +16,30 @@ import analyticsRoutes from "./routes/analytics";
 import { Url } from "./models/Url";
 import { Click } from "./models/Click";
 
-//Services 
+//Services
 import { parseUserAgent, getGeoFromIP } from "./services/geoip";
 import { cacheUrl, getCachedUrl } from "./services/redis";
 
 //middleware
 import { rateLimiter } from "./middleware/rateLimiter";
 
-dotenv.config();
-
 const app = express();
 
-app.use(cors());
+app.use(helmet());
+app.use(morgan("dev"));
+app.use(cors({
+    origin: (origin, callback) => {
+        const allowed = process.env.CLIENT_URL || "http://localhost:5173";
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+        // In dev, allow any localhost port
+        if (origin.startsWith("http://localhost:") || origin === allowed) {
+            return callback(null, true);
+        }
+        callback(new Error(`CORS blocked: ${origin}`));
+    },
+    credentials: true,
+}));
 app.use(express.json());
 app.use(rateLimiter);
 app.use("/api/auth", authRoutes)
@@ -133,7 +149,7 @@ app.get(
             });
 
         } catch (err){
-            console.error("Redirect errro: ", err);
+            console.error("Redirect error: ", err);
             res.status(500).json({ error: "server error "});
         }
     }
@@ -151,7 +167,17 @@ mongoose
         });
     })
 .catch((err: Error) => {
-    console.error(" monogDb connection failed: ", err.message);
+    console.error(" mongoDb connection failed: ", err.message);
     process.exit(1);
 });
+
+const shutdown = async () => {
+    console.log("Shutting down server");
+    await mongoose.connection.close();
+    console.log("MongoDb connection closed");
+    process.exit(0);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
 

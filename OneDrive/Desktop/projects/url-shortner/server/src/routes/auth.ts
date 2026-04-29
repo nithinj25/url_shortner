@@ -1,23 +1,31 @@
 import { Router, Request, Response } from "express";
 import { User } from "../models/User";
+import { authRateLimiter } from "../middleware/authRateLimiter";
 import {
     generateAccessToken,
     generateRefreshToken,
     verifyRefreshToken,
 } from "../services/token";
-import { NetworkResources } from "node:inspector/promises";
-import { access } from "node:fs";
-import { request } from "node:http";
+ 
 
 const router = Router();
 
-router.post("/register", async (req: Request, res: Response): Promise<void> => {
+router.post(
+    "/register",
+    authRateLimiter,
+    async (req: Request, res: Response): Promise<void> => {
     const { name, email, password } = req.body;
 
     if(!name || !email || !password ){
         res.status(400).json({ success: false, error: "All fields are required "});
         return;
     }
+
+    if(password.length < 8){
+        res.status(400).json({ success: false, error: "length should be greater than 8"});
+        return;
+    }
+
     try{
         const existingUser = await User.findOne({ email });
         if(existingUser){
@@ -46,7 +54,9 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
     }
 });
 
-router.post("/login", async (req: Request, res: Response): Promise<void> => {
+router.post("/login",
+    authRateLimiter,
+    async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
 
     if(!email || !password){
@@ -120,7 +130,7 @@ router.post("/refresh", async (req: Request, res: Response) : Promise<void> => {
 });
 
 
-//Post api/auth/lagout
+//Post api/auth/logout
 
 router.post("/logout", async (req: Request, res: Response): Promise<void> => {
   const { refreshToken } = req.body;

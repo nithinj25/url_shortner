@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const logout = async () => {
         const refreshToken = localStorage.getItem("refreshToken") || "";
-        await authApi.logout(refreshToken);
+        try { await authApi.logout(refreshToken); } catch { /* best-effort */ }
         localStorage.clear();
         setUser(null);
     }

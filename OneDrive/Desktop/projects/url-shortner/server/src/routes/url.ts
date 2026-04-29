@@ -9,7 +9,12 @@ import {
   cacheOriginalUrlLookup,
   cacheUrl,
   getCachedShortCodeByOriginalUrl,
+  invalidateUrl,
 } from "../services/redis";
+import { parse } from "node:path";
+import { promiseHooks } from "node:v8";
+import { stringify } from "node:querystring";
+import { error } from "node:console";
 
 const router = Router();
 
@@ -31,6 +36,17 @@ router.post(
     res: Response
   ): Promise<void> => {
     const { originalUrl, customAlias, expiresInDays } = req.body;
+
+    if(customAlias && !/^[a-zA-Z0-9_-]+$/.test(customAlias)){
+      res.status(400).json({ success: false, error: "Alias can only contain letters, numbers, hyphens and underscores"});
+      return ;
+    }
+
+    if(expiresInDays && expiresInDays > 365){
+      res.status(400).json({ success: false, error: "Expiry cannot excedd 365 days"});
+      return;
+    }
+
     const ownerId = req.user!.userId;
 
     try {
@@ -121,11 +137,32 @@ router.get(
   protect,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const urls = await Url.find({ owner: req.user!.userId })
-        .sort({ createdAt: -1 })
-        .limit(20);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1)* limit;
 
-      res.status(200).json({ success: true, data: urls });
+      const ownerId = req.user!.userId;
+
+      const [urls, total] = await Promise.all([
+        Url.find({ owner: ownerId})
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+
+        Url.countDocuments({ owner: ownerId}),
+      ]);
+
+      res.status(200).json({
+        success: true,
+        data: urls,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total/limit),
+          hasNextPage: page < Math.ceil(total / limit),
+        },
+      });
     } catch (err) {
       res.status(500).json({ success: false, error: "Server error" });
     }
@@ -274,5 +311,52 @@ router.delete(
     }
   }
 );
+
+//for editing the url
+router.patch(
+  "/:id" ,
+  protect,
+  async (req: Request<{id: string}>, res: Response): Promise<void> => {
+    try{
+      const url = await Url.findOne({
+        _id: req.params.id,
+        owner: req.user!.userId,
+      });
+
+      if(!url){
+        res.status(404).json({ success: false, error: "Url not found" });
+        return;
+      }
+
+      const { originalUrl, customAlias } = req.body;
+
+      if(originalUrl){
+        try{
+          new URL(originalUrl);
+        } catch{
+          res.status(400).json({ success: false, error: "invalid url format. include the requried format"})
+          return;
+        }
+
+        await invalidateUrl(url.shortCode);
+        url.originalUrl = originalUrl;
+      }
+
+      if (customAlias) {
+        if (!/^[a-zA-Z0-9_-]+$/.test(customAlias)) {
+          res.status(400).json({ success: false, error: "Alias can only contain letters, numbers, hyphens and underscores" });
+          return;
+        }
+        url.customAlias = customAlias;
+      }
+
+      await url.save();
+      res.status(200).json({ success: true, data: url });
+
+    } catch (err){
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  }
+)
 
 export default router;

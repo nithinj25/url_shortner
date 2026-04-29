@@ -54,7 +54,7 @@ export default function Analytics() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 dark:text-gray-400 mb-4">URL not found</p>
-          <Link to="/" className="text-brand-500 hover:text-brand-600 text-sm font-medium">
+          <Link to="/dashboard" className="text-brand-500 hover:text-brand-600 text-sm font-medium">
             Back to dashboard
           </Link>
         </div>
@@ -72,7 +72,7 @@ export default function Analytics() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/dashboard")}
               className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />

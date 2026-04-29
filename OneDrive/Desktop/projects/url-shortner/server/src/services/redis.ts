@@ -1,14 +1,25 @@
 import Redis from "ioredis";
 
 const redis = new Redis(process.env.REDIS_URL || "redis://127.0.0.1:6379", {
-    maxRetriesPerRequest: 3,
-    enableReadyCheck: true,
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
     lazyConnect: true,
     enableOfflineQueue: false,
+    retryStrategy: (times) => {
+        if (times > 3) {
+            console.warn("Redis unavailable — caching and rate limiting disabled.");
+            return null; // stop retrying
+        }
+        return Math.min(times * 500, 2000);
+    },
 });
 
 redis.on("connect", ()=> console.log("redis connected"));
 redis.on("error", (err) => console.error("Redis error: ", err.message));
+
+redis.connect().catch((err) => {
+    console.error("Redis initial connection failed: ", err.message);
+});
 
 export const TTL = {
   URL_REDIRECT: 60 * 60 * 24,  // 24 hours — short URL lookups
