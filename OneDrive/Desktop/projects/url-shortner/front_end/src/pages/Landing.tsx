@@ -16,7 +16,7 @@ import {
 
 const fadeUp = {
   hidden:  { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0,  transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
+  visible: { opacity: 1, y: 0,  transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 const stagger = {
@@ -52,7 +52,7 @@ function Reveal({ children, className = "", delay = 0 }: {
       animate={controls}
       variants={{
         hidden:  { opacity: 0, y: 28 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1], delay } },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as const, delay } },
       }}
     >
       {children}
@@ -160,7 +160,7 @@ function CardDeck() {
           className={`absolute w-36 h-48 rounded-2xl border ${card.bg} shadow-2xl cursor-pointer`}
           initial={{ rotate: 0, x: 0, y: 40, opacity: 0, scale: 0.9 }}
           animate={{ rotate: card.rotate, x: card.x, y: card.y, opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.4 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.8, delay: 0.4 + i * 0.08, ease: [0.22, 1, 0.36, 1] as const }}
           whileHover={{
             y: card.y - 12,
             scale: 1.05,
