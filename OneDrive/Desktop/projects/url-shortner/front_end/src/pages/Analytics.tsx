@@ -82,7 +82,7 @@ export default function Analytics() {
                 Analytics
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500">
-                localhost:5000/{url.shortCode}
+                {(import.meta.env.VITE_API_URL as string || "http://localhost:5000/api").replace("/api", "")}/{url.shortCode}
               </p>
             </div>
           </div>
